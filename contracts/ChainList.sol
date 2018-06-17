@@ -6,6 +6,10 @@ contract ChainList {
   string description;
   uint256 price;
 
+  function ChainList() public {
+    sellArticle("default article", "Default description", 10e18);
+  }
+
   function sellArticle(string _name, string _description, uint256 _price) public {
     seller = msg.sender;
     name = _name;
