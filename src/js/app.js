@@ -1,28 +1,60 @@
 App = {
      web3Provider: null,
      contracts: {},
+     account: 0x0,
 
      init: function() {
-          /*
-           * Replace me...
-           */
+        // var articlesRow = $('#articlesRow');
+        // var articleTemplate = $('#articleTemplate');
+        // articleTemplate.find('.panel-title').text('article 1');
+        // articleTemplate.find('.article-description').text('description');
+        // articleTemplate.find('.article-price').text('10.23');
+        // articleTemplate.find('.article-seller').text('0x5023845720345');
 
-          return App.initWeb3();
+        // articlesRow.append(articleTemplate.html());
+
+        return App.initWeb3();
      },
 
      initWeb3: function() {
-          /*
-           * Replace me...
-           */
+        if (typeof web3 !== 'undefined') {
+          App.web3Provider = web3.currentProvider;
+        } else {
+          App.web3Provider = new Web3.providers.HttpProvider("http://localhost:7545");
+        }
+        web3 = new Web3(App.web3Provider);
 
-          return App.initContract();
+        App.displayAccountInfo();
+
+        return App.initContract();
+     },
+
+     displayAccountInfo: function () {
+        web3.eth.getCoinbase(function(err, account) {
+          if (err === null) {
+            App.account = account;
+            $('#account').text(account);
+            web3.eth.getBalance(account, function(err, balance) {
+              if (err == null) {
+                $('#accountBalance').text(web3.fromWei(balance, "ether") + " ETH");
+              }
+            })
+          }
+        })
      },
 
      initContract: function() {
-          /*
-           * Replace me...
-           */
+       $.getJSON('ChainList.json', function(chainListArtifct) {
+          App.contracts.ChainList = TruffleContract(chainListArtifct);
+
+          App.contracts.ChainList.setProvider(App.web3Provider);
+
+          return App.reloadArticles();
+       });
      },
+
+     reloadArticles: function() {
+     }
 };
 
 $(function() {
