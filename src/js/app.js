@@ -61,7 +61,8 @@ App = {
        App.contracts.ChainList.deployed().then(function (instance) {
          return instance.getArticle();
        }).then(function(article) {
-          if (article[0] === 0x0) {
+          // == for needed fuzzy matching
+          if (article[0] == 0x0) {
             return;
           }
 
@@ -81,6 +82,27 @@ App = {
        }).catch(function(err) {
           console.error(err.message);
        })
+     },
+
+     sellArticle: function () {
+      var _article_name = $('#article_name').val();
+      var _article_description = $('#article_description').val();
+      var _article_price = web3.toWei(parseFloat($('#article_price').val() || 0), "ether");
+
+      if ((_article_name.trim() === "") || (_article_price === 0)) {
+        return false;
+      }
+
+      App.contracts.ChainList.deployed().then(function (instance) {
+        return instance.sellArticle(_article_name, _article_description, _article_price, {
+          from: App.account,
+          gas: 5e5
+        });
+      }).then(function(result) {
+        App.reloadArticles();
+      }).catch(function(err) {
+        console.error(err.message);
+      }) ;
      }
 };
 
