@@ -49,6 +49,8 @@ App = {
 
           App.contracts.ChainList.setProvider(App.web3Provider);
 
+          App.listenToEvents();
+
           return App.reloadArticles();
        });
      },
@@ -99,10 +101,23 @@ App = {
           gas: 5e5
         });
       }).then(function(result) {
-        App.reloadArticles();
+
       }).catch(function(err) {
         console.error(err.message);
-      }) ;
+      });
+     },
+
+     listenToEvents: function() {
+        App.contracts.ChainList.deployed().then(function(instance) {
+          instance.LogSellArticle({}, {}).watch(function(error, event) {
+            if (!error) {
+              $('#events').append('<li class="list-group-item">' + event.args._name + ' is now for sale</li>')
+            } else {
+              console.log(error)
+            }
+            App.reloadArticles();
+          })
+        })
      }
 };
 
