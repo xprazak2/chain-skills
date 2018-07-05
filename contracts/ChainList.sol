@@ -1,56 +1,93 @@
 pragma solidity ^0.4.18;
 
-contract ChainList {
-  address seller;
-  address buyer;
-  string name;
-  string description;
-  uint256 price;
+import "./Ownable.sol";
+
+contract ChainList is Ownable {
+
+  struct Article {
+    uint id;
+    address seller;
+    address buyer;
+    string name;
+    string description;
+    uint256 price;
+  }
+
+  mapping (uint => Article) public articles;
+  uint articleCounter;
 
   event LogSellArticle(
+    uint indexed _id,
     address indexed _seller,
     string _name,
     uint256 _price
   );
 
   event LogBuyArticle(
+    uint indexed _id,
     address indexed _seller,
     address indexed _buyer,
-    string name,
+    string _name,
     uint256 _price
   );
 
+  function kill() public onlyOwner {
+    selfdestruct(owner);
+  }
+
   function sellArticle(string _name, string _description, uint256 _price) public {
-    seller = msg.sender;
-    name = _name;
-    description = _description;
-    price = _price;
+    articleCounter++;
 
-    LogSellArticle(seller, name, price);
+    articles[articleCounter] = Article(articleCounter,
+                                       msg.sender,
+                                       0x0,
+                                       _name,
+                                       _description,
+                                       _price);
+    LogSellArticle(articleCounter, msg.sender, _name, _price);
   }
 
-  function getArticle() public view returns (
-    address _seller,
-    address _buyer,
-    string _name,
-    string _description,
-    uint256 _price ) {
-    return (seller, buyer, name, description, price);
+  function getNumberOfArticles() public view returns (uint) {
+    return articleCounter;
   }
 
-  function buyArticle() payable public {
-    require(seller != 0x0);
+  function getArticlesForSale() public view returns (uint[]) {
+    uint[] memory articleIds = new uint[](articleCounter);
 
-    require(buyer == 0x0);
+    uint numberOfArticlesForSale = 0;
 
-    require(msg.sender != seller);
+    for(uint i = 1; i <= articleCounter; i++) {
+      if(articles[i].buyer == 0x0) {
+        articleIds[numberOfArticlesForSale] = articles[i].id;
+        numberOfArticlesForSale++;
+      }
+    }
 
-    require(msg.value == price);
+    uint[] memory forSale = new uint[](numberOfArticlesForSale);
+    for(uint j = 0; j < numberOfArticlesForSale; j++) {
+      forSale[j] = articleIds[j];
+    }
 
-    buyer = msg.sender;
+    return forSale;
+  }
 
-    seller.transfer(msg.value);
+  function buyArticle(uint _id) payable public {
+    require(articleCounter > 0);
 
-    LogBuyArticle(seller, buyer, name, price);
+    require(_id > 0 && _id <= articleCounter);
+
+    Article storage article = articles[_id];
+
+    require(article.buyer == 0x0);
+
+    require(msg.sender != article.seller);
+
+    require(msg.value == article.price);
+
+    article.buyer = msg.sender;
+
+    article.seller.transfer(msg.value);
+
+    LogBuyArticle(_id, article.seller, article.buyer, article.name, article.price);
   }
 }

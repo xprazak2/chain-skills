@@ -2,6 +2,7 @@ App = {
      web3Provider: null,
      contracts: {},
      account: 0x0,
+     loading: false,
 
      init: function() {
         // var articlesRow = $('#articlesRow');
@@ -56,34 +57,59 @@ App = {
      },
 
      reloadArticles: function() {
+      if (App.loading) {
+        return;
+      }
+
+      App.loading = true;
+
        App.displayAccountInfo();
 
-       $('#articlesRow').empty();
+       var chainListInstance;
+
 
        App.contracts.ChainList.deployed().then(function (instance) {
-         return instance.getArticle();
-       }).then(function(article) {
-          // == for needed fuzzy matching
-          if (article[0] == 0x0) {
-            return;
+        chainListInstance = instance;
+         return instance.getArticlesForSale();
+       }).then(function(articleIds) {
+          $('#articlesRow').empty();
+
+          for(var i = 0; i < Array.from(articleIds).length; i++) {
+            var articleId = articleIds[i];
+            chainListInstance.articles(articleId.toNumber()).then(function(article){
+              App.displayArticle(article[0], article[1], article[3], article[4], article[5]);
+            });
           }
 
-          var articleTemplate = $('#articleTemplate');
-          articleTemplate.find('.panel-title').text(article[1])
-          articleTemplate.find('.article-description').text(article[2])
-          articleTemplate.find('.article-price').text(web3.fromWei(article[3], "ether"))
+          App.loading = false;
 
-          var seller = article[0];
-
-          if (seller === App.account) {
-            seller = "You";
-          }
-          articleTemplate.find(".article-seller").text(seller);
-
-          $('#articlesRow').append(articleTemplate.html());
        }).catch(function(err) {
           console.error(err.message);
+          App.loading = false;
        })
+     },
+
+     displayArticle: function(id, seller, name, description, price) {
+      var articlesRow = $('#articlesRow');
+
+      var etherPrice = web3.fromWei(price, "ether");
+
+      var articleTemplate = $('#articleTemplate')
+      articleTemplate.find('.panel-title').text(name);
+      articleTemplate.find('.article-description').text(description);
+      articleTemplate.find('.article-price').text(etherPrice + " ETH");
+      articleTemplate.find('.btn-buy').attr('data-id', id);
+      articleTemplate.find('.btn-buy').attr('data-value', etherPrice);
+
+      if (seller == App.account) {
+        articleTemplate.find('.article-seller').text("You");
+        articleTemplate.find('.btn-buy').hide();
+      } else {
+        articleTemplate.find('.article-seller').text(seller);
+        articleTemplate.find('.btn-buy').show();
+      }
+
+      articlesRow.append(articleTemplate.html())
      },
 
      sellArticle: function () {
@@ -117,7 +143,33 @@ App = {
             }
             App.reloadArticles();
           })
+
+          instance.LogBuyArticle({}, {}).watch(function(error, event) {
+            if (!error) {
+              $('#events').append('<li class="list-group-item">' + event.args._buyer + ' bought ' + event.args._name + '</li>')
+            } else {
+              console.log(error)
+            }
+            App.reloadArticles();
+          })
         })
+     },
+
+     buyArticle: function() {
+      event.preventDefault();
+
+      var articleId = $(event.target).data('id');
+      var price = parseFloat($(event.target).data('value'));
+
+      App.contracts.ChainList.deployed().then(function(instance) {
+        return instance.buyArticle(articleId, {
+          from: App.account,
+          value: web3.toWei(price, 'ether'),
+          gas: 500000
+        })
+      }).catch(function(error) {
+        console.log(error);
+      })
      }
 };
 
